@@ -62,7 +62,7 @@ public class Game extends Application {
                 if (bird.getBoundsInParent().intersects(0, BOUNDSY, BOUNDSX, 1) || bird.getBoundsInParent().intersects(0, 0, BOUNDSX, 1)) {
                     Platform.runLater(() -> bird.setTranslateY(bird.getTranslateY() - (falling ? 1 : -1)));
                 }
-                if(bird.getBoundsInParent().intersects(0, BOUNDSY, BOUNDSX, 1)){//Hitting the bottom
+                if (bird.getBoundsInParent().intersects(0, BOUNDSY, BOUNDSX, 1)) {//Hitting the bottom
                     reset();
                 }
             }
@@ -89,13 +89,13 @@ public class Game extends Application {
         }
         //Prevent multiple score increments from passing one obstacle
         counter++;
-        if (counter > 100) {
+        if (counter > 150) {
             counter = 0;
             isPassed = true;
         }
         if (getBirds().get(0).getBoundsInParent().intersects(getObstacles().get(0).getBoundsInParent().getMaxX(), 0, 1, BOUNDSY) && isPassed) {
-            SCORE.setText(Integer.toString(Integer.parseInt(SCORE.getText()) + 50));
-            SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int)(Math.log10(Integer.parseInt(SCORE.getText()))));
+            SCORE.setText(Integer.toString(Integer.parseInt(SCORE.getText()) + 1));
+            SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int) (Math.log10(Integer.parseInt(SCORE.getText()))));
             isPassed = false;
         }
         if (getObstacles().get(0).getBoundsInParent().intersects(getBirds().get(0).getBoundsInParent()) || getObstacles().get(1).getBoundsInParent().intersects(getBirds().get(0).getBoundsInParent())) {
@@ -115,7 +115,7 @@ public class Game extends Application {
         getBirds().clear();
         getObstacles().clear();
         SCORE.setText("0");
-        SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int)(Math.log10(Integer.parseInt(SCORE.getText()))));
+        SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int) (Math.log10(Integer.parseInt(SCORE.getText()))));
         setup();
     }
 
