@@ -25,10 +25,10 @@ public class Game extends Application {
     private final static Rectangle BACKGROUND = new Rectangle(0, 0, BOUNDSX, BOUNDSY);
     private final HashMap<KeyCode, Boolean> keys = new HashMap<>();
     public final static double OBSTACLE_WIDTH = 100;
-    public final static double OBSTACLE_GAP = 200;
+    public final static double OBSTACLE_GAP = 300;
     public final static double OBSTACLE_SPACING = 750;
     private static final Text SCORE = new Text();
-    private static boolean isPassed = false;
+    private static boolean canPass = false;
     private static int counter = 0;
     Stage stage;
 
@@ -71,7 +71,7 @@ public class Game extends Application {
         keys.put(KeyCode.SPACE, false);//Key cannot be held down
         //Move obstacles instead birds to maybe help performance
         for (int i = 0; i < getObstacles().size(); i++) {
-            getObstacles().get(i).setTranslateX(getObstacles().get(i).getTranslateX() - 5);
+            getObstacles().get(i).setTranslateX(getObstacles().get(i).getTranslateX() - 10);
         }
         if (getObstacles().get(0).getBoundsInParent().intersects(-OBSTACLE_WIDTH, 0, 1, BOUNDSY)) {//Obstacle goes off screen
             getObstacles().remove(0);//Remove top
@@ -82,12 +82,12 @@ public class Game extends Application {
         counter++;
         if (counter > 150) {
             counter = 0;
-            isPassed = true;
+            canPass = true;
         }
-        if (getBirds().get(0).getBoundsInParent().intersects(getObstacles().get(0).getBoundsInParent().getMaxX(), 0, 1, BOUNDSY) && isPassed) {
+        if (getBirds().get(0).getBoundsInParent().intersects(getObstacles().get(0).getBoundsInParent().getMaxX(), 0, 1, BOUNDSY) && canPass) {
             SCORE.setText(Integer.toString(Integer.parseInt(SCORE.getText()) + 1));
             SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int) (Math.log10(Integer.parseInt(SCORE.getText()))));
-            isPassed = false;
+            canPass = false;
         }
         if (getObstacles().get(0).getBoundsInParent().intersects(getBirds().get(0).getBoundsInParent()) || getObstacles().get(1).getBoundsInParent().intersects(getBirds().get(0).getBoundsInParent())) {
             reset();
