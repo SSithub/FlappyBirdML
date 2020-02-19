@@ -4,40 +4,55 @@ import static flappybirdai.Game.BOUNDSX;
 import static flappybirdai.Game.BOUNDSY;
 import static flappybirdai.Game.getObstacles;
 import static flappybirdai.Game.elapsed;
+import static flappybirdai.Game.obstacleAhead;
+import static flappybirdai.Game.OBSTACLE_GAP;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
 
 public class Bird extends Circle {
 
     private NNest.NN nn;
+    private float[][] inputs;
+    public static final double RADIUS = 25;
     private double velocity = 0;
+    private boolean falling;
     private boolean jump = false;
-    private final int DELAY = 1;
+    private final int DELAY = 10;
     private int delay = DELAY;
     private int fitness = 0;
+    private double distanceFromGapLevel;
     private final AnimationTimer timer = new AnimationTimer() {
         @Override
         public void handle(long l) {
-            fitness = elapsed;
+            distanceFromGapLevel = Math.abs((getBoundsInParent().getMinY() + RADIUS) - (getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY() + OBSTACLE_GAP));
+            fitness = (int) (2 * elapsed + (BOUNDSY / (1 + distanceFromGapLevel)));
             //Y of the top of the bird, Y of the bottom of the bird, X of the left side of the first obstacle, X of the right side of the first obstacle, X of the left side of the second obstacle, X of the right side of the second obstacle, Y of the top of the first obstacle's gap, Y of the bottom of the first obstacle's gap, Y of the top of the second obstacle's gap, Y of the bottom of the second obstacle's gap, fitness, velocity
 //            float[][] inputs = {{(float) getBoundsInParent().getMinY(), (float) getBoundsInParent().getMaxY(), (float) getObstacles().get(0).getBoundsInParent().getMinX(), (float) getObstacles().get(0).getBoundsInParent().getMaxX(), (float) getObstacles().get(2).getBoundsInParent().getMinX(), (float) getObstacles().get(2).getBoundsInParent().getMaxX(), (float) getObstacles().get(0).getBoundsInParent().getMaxY(), (float) getObstacles().get(1).getBoundsInParent().getMinY(), (float) getObstacles().get(2).getBoundsInParent().getMaxY(), (float) getObstacles().get(3).getBoundsInParent().getMinY(), (float) fitness, (float) getVelocity()}};
-            float[][] inputs = {{(float) getBoundsInParent().getMinY(),
+//            inputs = new float[][]{{(float) getBoundsInParent().getMinY(),
+//                (float) getBoundsInParent().getMaxY(),
+//                (float) getObstacles().get(0).getBoundsInParent().getMinX(),
+//                (float) getObstacles().get(0).getBoundsInParent().getMaxX(),
+//                (float) getObstacles().get(0).getBoundsInParent().getMaxY(),
+//                (float) getObstacles().get(1).getBoundsInParent().getMinY(),
+//                (float) getObstacles().get(2).getBoundsInParent().getMinX(),
+//                (float) getObstacles().get(2).getBoundsInParent().getMaxX(),
+//                (float) getObstacles().get(2).getBoundsInParent().getMaxY(),
+//                (float) getObstacles().get(3).getBoundsInParent().getMinY(),
+//                (float) getObstacles().get(4).getBoundsInParent().getMinX(),
+//                (float) getObstacles().get(4).getBoundsInParent().getMaxX(),
+//                (float) getObstacles().get(4).getBoundsInParent().getMaxY(),
+//                (float) getObstacles().get(5).getBoundsInParent().getMinY(),
+//                (float) getVelocity()}};
+            inputs = new float[][]{{(float) getBoundsInParent().getMinY(),
                 (float) getBoundsInParent().getMaxY(),
-                (float) getObstacles().get(0).getBoundsInParent().getMinX(),
-                (float) getObstacles().get(0).getBoundsInParent().getMaxX(),
-                (float) getObstacles().get(0).getBoundsInParent().getMaxY(),
-                (float) getObstacles().get(1).getBoundsInParent().getMinY(),
-                (float) getObstacles().get(2).getBoundsInParent().getMinX(),
-                (float) getObstacles().get(2).getBoundsInParent().getMaxX(),
-                (float) getObstacles().get(2).getBoundsInParent().getMaxY(),
-                (float) getObstacles().get(3).getBoundsInParent().getMinY(),
-                (float) getObstacles().get(4).getBoundsInParent().getMinX(),
-                (float) getObstacles().get(4).getBoundsInParent().getMaxX(),
-                (float) getObstacles().get(4).getBoundsInParent().getMaxY(),
-                (float) getObstacles().get(5).getBoundsInParent().getMinY(),
-                (float) getVelocity()}};
+                (float) getVelocity(),
+                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMinX(),
+                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(),
+                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY(),
+                (float) getObstacles().get(obstacleAhead + 1).getBoundsInParent().getMinY()}};
             jump = nn.feedforward(inputs)[0][0] >= .5;
 //            nn.print(nn.normalize(inputs), "");
             jump();
@@ -45,11 +60,11 @@ public class Bird extends Circle {
         }
     };
 
-    Bird() {
-        this.setRadius(25);
+    Bird(Color color) {
+        this.setRadius(RADIUS);
         this.setTranslateX(Game.BOUNDSX / 3);
         this.setTranslateY(Game.BOUNDSY / 2);
-        this.setFill(Color.ALICEBLUE);
+        this.setFill(color);
         timer.start();
     }
 
@@ -57,8 +72,8 @@ public class Bird extends Circle {
         return -velocity;
     }
 
-    public void addVelocity(double delta) {
-        velocity -= delta;
+    public void addVelocity(double change) {
+        velocity -= change;
     }
 
     public void setVelocity(double velocity) {
@@ -74,29 +89,27 @@ public class Bird extends Circle {
     }
 
     public void gravity() {
-        boolean falling = getVelocity() < 0;// < 0 = true; > 0 = false
-        if (getVelocity() > -10) {//Terminal velocity
-            addVelocity(-.3);
-        }
+        falling = getVelocity() < 0;// < 0 = true; > 0 = false
+        addVelocity(-.49);
         for (int j = 0; j < Math.abs(velocity); j++) {
             setTranslateY(getTranslateY() + (falling ? 1 : -1));
             if (getBoundsInParent().intersects(0, BOUNDSY, BOUNDSX, 1)) {//Hitting the bottom
                 death();
-            } else if (getBoundsInParent().intersects(0, 0, BOUNDSX, 1)) {
+            } else if (getBoundsInParent().intersects(0, 0, BOUNDSX, 1)) {//Hitting the top
                 death();
             }
         }
     }
 
     public void jump() {
-//        delay--;
-//        if (jump && delay < 0) {
-//            setVelocity(7);
-//            delay = DELAY;
-//        }
-        if (jump) {
-            setVelocity(8);
+        delay--;
+        if (jump && delay < 0) {
+            setVelocity(11);
+            delay = DELAY;
         }
+//        if (jump) {
+//            setVelocity(10);
+//        }
     }
 
     public void death() {

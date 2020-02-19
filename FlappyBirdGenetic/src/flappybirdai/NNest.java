@@ -155,7 +155,7 @@ public class NNest extends Application implements Serializable{
                 return false;
             }
         }
-        public void mutate(double mutateRate, double range){
+        public void mutateAdditive(double mutateRate, double range){
             for (int i = 0; i < getNetworkSize(); i++) {
                 for (int j = 0; j < getNetworkLayer(i).weights.length; j++) {
                     for (int k = 0; k < getNetworkLayer(i).weights[0].length; k++) {
@@ -173,7 +173,25 @@ public class NNest extends Application implements Serializable{
                 }
             }
         }
-        public void randomize(double range){
+        public void mutateNewValues(double mutateRate, double range){
+            for (int i = 0; i < getNetworkSize(); i++) {
+                for (int j = 0; j < getNetworkLayer(i).weights.length; j++) {
+                    for (int k = 0; k < getNetworkLayer(i).weights[0].length; k++) {
+                        if (Math.random() < mutateRate) {
+                            getNetworkLayer(i).weights[j][k] = ((float) (Math.random() * range - (range/2)));
+                        }
+                    }
+                }
+                for (int j = 0; j < getNetworkLayer(i).biases.length; j++) {
+                    for (int k = 0; k < getNetworkLayer(i).biases[0].length; k++) {
+                        if (Math.random() < mutateRate) {
+                            getNetworkLayer(i).biases[j][k] = ((float) (Math.random() * range - (range/2)));
+                        }
+                    }
+                }
+            }
+        }
+        public void randomizeNetwork(double range){
             for (int i = 0; i < getNetworkSize(); i++) {
                 for (int j = 0; j < getNetworkLayer(i).weights.length; j++) {
                     for (int k = 0; k < getNetworkLayer(i).weights[0].length; k++) {
