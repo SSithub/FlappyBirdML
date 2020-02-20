@@ -7,10 +7,8 @@ import static flappybirdai.Game.elapsed;
 import static flappybirdai.Game.obstacleAhead;
 import static flappybirdai.Game.OBSTACLE_GAP;
 import javafx.animation.AnimationTimer;
-import javafx.application.Platform;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Rectangle;
 
 public class Bird extends Circle {
 
@@ -22,15 +20,10 @@ public class Bird extends Circle {
     private boolean jump = false;
     private final int DELAY = 10;
     private int delay = DELAY;
-    private int fitness = 0;
-    private double distanceFromGapLevel;
+    private ArrayList<
     private final AnimationTimer timer = new AnimationTimer() {
         @Override
         public void handle(long l) {
-            distanceFromGapLevel = Math.abs((getBoundsInParent().getMinY() + RADIUS) - (getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY() + OBSTACLE_GAP));
-            fitness = (int) (2 * elapsed + (BOUNDSY / (1 + distanceFromGapLevel)));
-            //Y of the top of the bird, Y of the bottom of the bird, X of the left side of the first obstacle, X of the right side of the first obstacle, X of the left side of the second obstacle, X of the right side of the second obstacle, Y of the top of the first obstacle's gap, Y of the bottom of the first obstacle's gap, Y of the top of the second obstacle's gap, Y of the bottom of the second obstacle's gap, fitness, velocity
-//         
             inputs = new float[][]{{(float) getBoundsInParent().getMinY(),
                 (float) getBoundsInParent().getMaxY(),
                 (float) getVelocity(),
@@ -46,8 +39,8 @@ public class Bird extends Circle {
 
     Bird(Color color) {
         this.setRadius(RADIUS);
-        this.setTranslateX(Game.BOUNDSX / 3);
-        this.setTranslateY(Game.BOUNDSY / 2);
+        this.setTranslateX(BOUNDSX / 3);
+        this.setTranslateY(BOUNDSY / 2);
         this.setFill(color);
         timer.start();
     }
@@ -91,18 +84,11 @@ public class Bird extends Circle {
             setVelocity(11);
             delay = DELAY;
         }
-//        if (jump) {
-//            setVelocity(10);
-//        }
     }
 
     public void death() {
         timer.stop();
         this.setVisible(false);
-    }
-
-    public int getFitness() {
-        return fitness;
     }
 
     public NNest.NN getBrain() {

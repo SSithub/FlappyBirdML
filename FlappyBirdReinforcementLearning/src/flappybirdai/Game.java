@@ -3,13 +3,10 @@ package flappybirdai;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.collections.ObservableList;
-import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.input.KeyCode;
-import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
@@ -32,19 +29,11 @@ public class Game extends Application {
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
     private int counter = 0;
-    private int generations = 0;
-    private NNest.NN nn = new NNest().new NN(0, "relu", "sigmoid", "quadratic", "none", false, 7, 7, 1);
-    private boolean newBrain = false;
+    private NNest.NN nn = new NNest().new NN(0, "relu", "sigmoid", "quadratic", "momentum", false, 7, 7, 1);
     public static int elapsed = 0;
     public static int obstacleAhead = 0;
     private int highscore = 0;
     private final Text HIGH = new Text("Highscore: " + highscore);
-
-    private final int POPULATION = 20000;
-    private final double MUTATION_RATE = .05;
-    private final double MUTATION_RANGE = 2;
-    private final double RANDOMIZE_RANGE = 2;
-
     AnimationTimer timer = new AnimationTimer() {
         @Override
         public void handle(long l) {
@@ -105,22 +94,8 @@ public class Game extends Application {
     }
 
     private void setup() {
-        if (newBrain) {
-            for (int i = 0; i < POPULATION; i++) {
-                getBirds().add(new Bird(Color.hsb(Math.random() * 361, .9, .9)));
-                ((Bird) getBirds().get(i)).setBrain(nn.copy());
-                ((Bird) getBirds().get(i)).getBrain().randomizeNetwork(RANDOMIZE_RANGE);
-            }
-            newBrain = false;
-        } else {
-            for (int i = 0; i < POPULATION; i++) {
-                getBirds().add(new Bird(Color.hsb(Math.random() * 361, .9, .9)));
-                ((Bird) getBirds().get(i)).setBrain(nn.copy());
-                ((Bird) getBirds().get(i)).getBrain().mutateNewValues(MUTATION_RATE, MUTATION_RANGE);
-            }
-            getBirds().add(new Bird(Color.WHITE));
-            ((Bird) getBirds().get(getBirds().size() - 1)).setBrain(nn.copy());
-        }
+        getBirds().add(new Bird(Color.hsb(Math.random() * 361, .9, .9)));
+        ((Bird) getBirds().get(0)).setBrain(nn.copy());
         for (int i = 0; i < 4; i++) {
             newObstacle(BOUNDSX + i * OBSTACLE_SPACING);
         }
@@ -128,18 +103,6 @@ public class Game extends Application {
     }
 
     private void reset() {
-        generations++;
-        int bestBirdIndex = 0;
-        int max = Integer.MIN_VALUE;
-        for (int i = 0; i < getBirds().size(); i++) {
-            if (((Bird) getBirds().get(i)).getFitness() > max) {
-                max = ((Bird) getBirds().get(i)).getFitness();
-                bestBirdIndex = i;
-            }
-        }
-        nn = ((Bird) getBirds().get(bestBirdIndex)).getBrain().copy();
-        System.out.println("Best Fitness For Generation " + generations + ": " + ((Bird) getBirds().get(bestBirdIndex)).getFitness());
-        System.out.println("Ticks Elapsed: " + elapsed);
         getBirds().clear();
         getObstacles().clear();
         if (highscore < Integer.parseInt(SCORE.getText())) {
@@ -163,21 +126,10 @@ public class Game extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         stage.setOnCloseRequest(event -> {
-            if (!newBrain) {
-                nn.save();
-            }
+            nn.save();
         });
-        Text close = new Text("Press Backspace To Save Current High And Quit,\nAlt + F4 To Save Last Generation's High");
-        close.setTextAlignment(TextAlignment.LEFT);
-        close.setTranslateX(50);
-        close.setTranslateY(50);
-        close.setScaleX(1.2);
-        close.setScaleY(1.2);
-        if (nn.load() == false) {
-            newBrain = true;
-        }
+        nn.load();
         BACKGROUND.setFill(Color.DEEPSKYBLUE);
-//        BACKGROUND.setFill(Color.BLACK);
         SCORE.setTranslateX(BOUNDSX - 100);
         SCORE.setTranslateY(100);
         SCORE.setScaleX(10);
@@ -186,24 +138,8 @@ public class Game extends Application {
         HIGH.setTranslateY(30);
         HIGH.setScaleX(2);
         HIGH.setScaleY(2);
-        ROOT.getChildren().addAll(BACKGROUND, BIRDS, OBSTACLES, SCORE, HIGH, close);
+        ROOT.getChildren().addAll(BACKGROUND, BIRDS, OBSTACLES, SCORE, HIGH);
         Scene scene = new Scene(ROOT, 0, 0);
-        scene.setOnKeyPressed(eh -> {
-            if (eh.getCode() == KeyCode.BACK_SPACE) {
-                if (!newBrain) {
-                    int bestBirdIndex = 0;
-                    int max = Integer.MIN_VALUE;
-                    for (int i = 0; i < getBirds().size(); i++) {
-                        if (((Bird) getBirds().get(i)).getFitness() > max) {
-                            max = ((Bird) getBirds().get(i)).getFitness();
-                            bestBirdIndex = i;
-                        }
-                    }
-                    nn = ((Bird) getBirds().get(bestBirdIndex)).getBrain().copy();
-                }
-                System.exit(0);
-            }
-        });
         stage.setScene(scene);
         stage.setFullScreen(true);
         stage.show();

@@ -7,10 +7,8 @@ import static flappybirdai.Game.elapsed;
 import static flappybirdai.Game.obstacleAhead;
 import static flappybirdai.Game.OBSTACLE_GAP;
 import javafx.animation.AnimationTimer;
-import javafx.application.Platform;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Rectangle;
 
 public class Bird extends Circle {
 
@@ -46,8 +44,8 @@ public class Bird extends Circle {
 
     Bird(Color color) {
         this.setRadius(RADIUS);
-        this.setTranslateX(Game.BOUNDSX / 3);
-        this.setTranslateY(Game.BOUNDSY / 2);
+        this.setTranslateX(BOUNDSX / 3);
+        this.setTranslateY(BOUNDSY / 2);
         this.setFill(color);
         timer.start();
     }
@@ -91,9 +89,6 @@ public class Bird extends Circle {
             setVelocity(11);
             delay = DELAY;
         }
-//        if (jump) {
-//            setVelocity(10);
-//        }
     }
 
     public void death() {
