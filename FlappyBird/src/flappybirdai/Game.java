@@ -1,103 +1,103 @@
 package flappybirdai;
 
-import java.util.HashMap;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.collections.ObservableList;
+import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.input.KeyCode;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 public class Game extends Application {
 
-    private final static Group ROOT = new Group();
-    private final static Group BIRDS = new Group();
-    private final static Group OBSTACLES = new Group();
+    private final Group ROOT = new Group();
+    private static final Group BIRDS = new Group();
+    private static final Group OBSTACLES = new Group();
     public static final double BOUNDSX = Screen.getPrimary().getVisualBounds().getMaxX();
     public static final double BOUNDSY = Screen.getPrimary().getVisualBounds().getMaxY() + 50;
-    private final static Rectangle BACKGROUND = new Rectangle(0, 0, BOUNDSX, BOUNDSY);
-    private final HashMap<KeyCode, Boolean> keys = new HashMap<>();
-    public final static double OBSTACLE_WIDTH = 100;
-    public final static double OBSTACLE_GAP = 300;
-    public final static double OBSTACLE_SPACING = 750;
-    private static final Text SCORE = new Text();
-    private static boolean canPass = false;
-    private static int counter = 0;
-    Stage stage;
+    private final Rectangle BACKGROUND = new Rectangle(0, 0, BOUNDSX, BOUNDSY);
+    public static final double OBSTACLE_WIDTH = 100;
+    public static final double OBSTACLE_GAP = 200;
+    public final double OBSTACLE_SPACING = 650;
+    private final double OBSTACLE_SPEED = 1;
+    private final Text SCORE = new Text("0");
+    private boolean canPass = false;
+    private int counter = 0;
+    public static int obstacleAhead = 0;
+    private int highscore = 0;
+    private final Text HIGH = new Text("Highscore: " + highscore);
 
     AnimationTimer timer = new AnimationTimer() {
         @Override
         public void handle(long l) {
             update();
-            for (int i = 0; i < getBirds().size(); i++) {
-                movement((Bird) getBirds().get(i), ((Bird) getBirds().get(i)).getVelocity());
-            }
         }
     };
 
-    private void movement(Bird bird, double velocity) {
-        boolean falling = velocity < 0;// < 0 = true; > 0 = false
-        if (bird.getVelocity() > -10) {//Terminal velocity
-            bird.addVelocity(-.2);
-        }
-        for (int i = 0; i < getBirds().size(); i++) {
-            for (int j = 0; j < Math.abs(velocity); j++) {
-                bird.setTranslateY(bird.getTranslateY() + (falling ? 1 : -1));
-                if (bird.getBoundsInParent().intersects(0, BOUNDSY, BOUNDSX, 1) || bird.getBoundsInParent().intersects(0, 0, BOUNDSX, 1)) {
-                    Platform.runLater(() -> bird.setTranslateY(bird.getTranslateY() - (falling ? 1 : -1)));
-                }
-                if (bird.getBoundsInParent().intersects(0, BOUNDSY, BOUNDSX, 1)) {//Hitting the bottom
-                    reset();
-                }
-            }
-        }
-    }
-
-    private boolean isPressed(KeyCode key) {
-        return keys.getOrDefault(key, false);
-    }
-
     private void update() {
-        if (isPressed(KeyCode.SPACE)) {
-            ((Bird) getBirds().get(0)).setVelocity(7);
-        }
-        keys.put(KeyCode.SPACE, false);//Key cannot be held down
         //Move obstacles instead birds to maybe help performance
         for (int i = 0; i < getObstacles().size(); i++) {
-            getObstacles().get(i).setTranslateX(getObstacles().get(i).getTranslateX() - 10);
+            getObstacles().get(i).setTranslateX(getObstacles().get(i).getTranslateX() - 5 * OBSTACLE_SPEED);
         }
         if (getObstacles().get(0).getBoundsInParent().intersects(-OBSTACLE_WIDTH, 0, 1, BOUNDSY)) {//Obstacle goes off screen
             getObstacles().remove(0);//Remove top
             getObstacles().remove(0);//Remove bottom
-            new Obstacle(getObstacles().get(getObstacles().size() - 1).getLayoutX() + OBSTACLE_SPACING * 4 - OBSTACLE_WIDTH, Math.random() * (2 * BOUNDSY / 3) + (BOUNDSY / 6));
+            newObstacle(getObstacles().get(getObstacles().size() - 1).getLayoutX() + OBSTACLE_SPACING * 4 - OBSTACLE_WIDTH);
+        }
+        //Search for first obstacle ahead of birds
+        for (int j = 0; j < getObstacles().size(); j++) {
+            if (getObstacles().get(j).getBoundsInParent().getMaxX() >= (BOUNDSX / 3) - 2 * Bird.RADIUS) {
+                obstacleAhead = j;
+                break;
+            }
+        }
+        //Check for collisions with obstacles
+        for (int i = 0; i < getBirds().size(); i++) {
+            if (getObstacles().get(obstacleAhead).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent()) || getObstacles().get(obstacleAhead + 1).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent())) {
+                ((Bird) getBirds().get(i)).death();
+            }
         }
         //Prevent multiple score increments from passing one obstacle
         counter++;
-        if (counter > 150) {
+        if (counter > 110 / OBSTACLE_SPEED) {
             counter = 0;
             canPass = true;
         }
-        if (getBirds().get(0).getBoundsInParent().intersects(getObstacles().get(0).getBoundsInParent().getMaxX(), 0, 1, BOUNDSY) && canPass) {
+        //Check for birds passing an obstacle
+        if (getBirds().get(0).getBoundsInParent().intersects(getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(), 0, 1, BOUNDSY) && canPass) {
             SCORE.setText(Integer.toString(Integer.parseInt(SCORE.getText()) + 1));
             SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int) (Math.log10(Integer.parseInt(SCORE.getText()))));
             canPass = false;
         }
-        if (getObstacles().get(0).getBoundsInParent().intersects(getBirds().get(0).getBoundsInParent()) || getObstacles().get(1).getBoundsInParent().intersects(getBirds().get(0).getBoundsInParent())) {
+        //Check for all birds dead
+        int dead = 0;
+        for (int i = 0; i < getBirds().size(); i++) {
+            if (getBirds().get(i).isVisible() == false) {
+                dead++;
+            }
+        }
+        if (dead == getBirds().size()) {
             reset();
         }
     }
 
+    private void newObstacle(double x) {
+        new Obstacle(x, Math.random() * (BOUNDSY - OBSTACLE_GAP - (BOUNDSY / 24)) + (BOUNDSY / 48));
+    }
+
     private void setup() {
-        BIRDS.getChildren().add(new Bird());
+        getBirds().add(new Bird(Color.WHITE));
         for (int i = 0; i < 4; i++) {
-            new Obstacle(BOUNDSX + i * OBSTACLE_SPACING, Math.random() * (BOUNDSY / 3) + (BOUNDSY / 6));
+            newObstacle(BOUNDSX + i * OBSTACLE_SPACING);
         }
         timer.start();
     }
@@ -105,8 +105,12 @@ public class Game extends Application {
     private void reset() {
         getBirds().clear();
         getObstacles().clear();
-        SCORE.setText("0");
+        if (highscore < Integer.parseInt(SCORE.getText())) {
+            highscore = Integer.parseInt(SCORE.getText());
+            HIGH.setText("Highscore: " + highscore);
+        }
         SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int) (Math.log10(Integer.parseInt(SCORE.getText()))));
+        SCORE.setText("0");
         setup();
     }
 
@@ -121,17 +125,28 @@ public class Game extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         BACKGROUND.setFill(Color.DEEPSKYBLUE);
-        SCORE.setText("0");
         SCORE.setTranslateX(BOUNDSX - 100);
         SCORE.setTranslateY(100);
         SCORE.setScaleX(10);
         SCORE.setScaleY(10);
-        ROOT.getChildren().addAll(BACKGROUND, BIRDS, OBSTACLES, SCORE);
+        HIGH.setTranslateX(BOUNDSX - 250);
+        HIGH.setTranslateY(30);
+        HIGH.setScaleX(2);
+        HIGH.setScaleY(2);
+        ROOT.getChildren().addAll(BACKGROUND, BIRDS, OBSTACLES, SCORE, HIGH);
         Scene scene = new Scene(ROOT, 0, 0);
+        scene.setOnKeyPressed(eh -> {
+            if (eh.getCode() == KeyCode.SPACE) {
+                try {
+                    ((Bird) getBirds().get(0)).setJump(true);
+                } catch (Exception e) {
+
+                }
+            }
+        });
         stage.setScene(scene);
         stage.setFullScreen(true);
         stage.show();
-        scene.setOnKeyPressed(event -> keys.put(event.getCode(), true));
         setup();
     }
 
