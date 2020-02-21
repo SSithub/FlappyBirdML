@@ -3,13 +3,10 @@ package flappybirdai;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.collections.ObservableList;
-import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
 import javafx.scene.input.KeyCode;
-import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
@@ -28,10 +25,9 @@ public class Game extends Application {
     public static final double OBSTACLE_WIDTH = 100;
     public static final double OBSTACLE_GAP = 200;
     public final double OBSTACLE_SPACING = 650;
-    private final double OBSTACLE_SPEED = 1;
+    private final double OBSTACLE_SPEED = 5;
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
-    private int counter = 0;
     private int generations = 0;
     private NNest.NN nn = new NNest().new NN(0, "relu", "sigmoid", "quadratic", "none", false, 7, 7, 1);
     private boolean newBrain = false;
@@ -56,8 +52,17 @@ public class Game extends Application {
         elapsed++;
         //Move obstacles instead birds to maybe help performance
         for (int i = 0; i < getObstacles().size(); i++) {
-            getObstacles().get(i).setTranslateX(getObstacles().get(i).getTranslateX() - 5 * OBSTACLE_SPEED);
+            for (int j = 0; j < OBSTACLE_SPEED; j++) {
+                getObstacles().get(i).setTranslateX(getObstacles().get(i).getTranslateX() - 1);
+                //Check if an obstacle has passed
+                if (BOUNDSX / 3 == getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX() && canPass) {
+                    SCORE.setText(Integer.toString(Integer.parseInt(SCORE.getText()) + 1));
+                    SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int) (Math.log10(Integer.parseInt(SCORE.getText()))));
+                    canPass = false;//Prevent multiple increments
+                }
+            }
         }
+        canPass = true;
         if (getObstacles().get(0).getBoundsInParent().intersects(-OBSTACLE_WIDTH, 0, 1, BOUNDSY)) {//Obstacle goes off screen
             getObstacles().remove(0);//Remove top
             getObstacles().remove(0);//Remove bottom
@@ -75,18 +80,6 @@ public class Game extends Application {
             if (getObstacles().get(obstacleAhead).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent()) || getObstacles().get(obstacleAhead + 1).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent())) {
                 ((Bird) getBirds().get(i)).death();
             }
-        }
-        //Prevent multiple score increments from passing one obstacle
-        counter++;
-        if (counter > 110 / OBSTACLE_SPEED) {
-            counter = 0;
-            canPass = true;
-        }
-        //Check for birds passing an obstacle
-        if (getBirds().get(0).getBoundsInParent().intersects(getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(), 0, 1, BOUNDSY) && canPass) {
-            SCORE.setText(Integer.toString(Integer.parseInt(SCORE.getText()) + 1));
-            SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int) (Math.log10(Integer.parseInt(SCORE.getText()))));
-            canPass = false;
         }
         //Check for all birds dead
         int dead = 0;
@@ -177,7 +170,6 @@ public class Game extends Application {
             newBrain = true;
         }
         BACKGROUND.setFill(Color.DEEPSKYBLUE);
-//        BACKGROUND.setFill(Color.BLACK);
         SCORE.setTranslateX(BOUNDSX - 100);
         SCORE.setTranslateY(100);
         SCORE.setScaleX(10);
