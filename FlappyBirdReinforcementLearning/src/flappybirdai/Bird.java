@@ -2,10 +2,9 @@ package flappybirdai;
 
 import static flappybirdai.Game.BOUNDSX;
 import static flappybirdai.Game.BOUNDSY;
+import static flappybirdai.Game.epsilon;
 import static flappybirdai.Game.getObstacles;
 import static flappybirdai.Game.obstacleAhead;
-import java.util.ArrayList;
-import javafx.animation.AnimationTimer;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 
@@ -18,35 +17,54 @@ public class Bird extends Circle {
     private boolean jump = false;
     private final int DELAY = 10;
     private int delay = DELAY;
-    private ArrayList<float[][]> states = new ArrayList<>();
-    private ArrayList<float[][]> actions = new ArrayList<>();
-    private float[][] state;
-    private float[][] value;
-    private final AnimationTimer timer = new AnimationTimer() {
-        @Override
-        public void handle(long l) {
-            state = new float[][]{{(float) getBoundsInParent().getMinY(),
-                (float) getBoundsInParent().getMaxY(),
-                (float) getVelocity(),
-                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMinX(),
-                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(),
-                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY(),
-                (float) getObstacles().get(obstacleAhead + 1).getBoundsInParent().getMinY()}};
-            value = nn.feedforward(state);
-            states.add(state);
-            actions.add(value);
-            jump = value[0][0] >= .5;
-            jump();
-            gravity();
-        }
-    };
+    private float[][] s;
+    private float[][] sPrime;
+    private int a = 0;
+    private int aPrime;
+    private final float DISCOUNT = .8f;
+    private boolean startup = true;
+    public boolean throughObstacle = false;
 
     Bird(Color color) {
         this.setRadius(RADIUS);
         this.setTranslateX(BOUNDSX / 3);
         this.setTranslateY(BOUNDSY / 2);
         this.setFill(color);
-        timer.start();
+    }
+
+    public void update() {
+        if (startup) {
+            s = nn.normalizeTanhEstimator(new float[][]{{(float) getBoundsInParent().getMinY(),
+                (float) getBoundsInParent().getMaxY(),
+                (float) getVelocity(),
+                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMinX(),
+                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(),
+                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY(),
+                (float) getObstacles().get(obstacleAhead + 1).getBoundsInParent().getMinY()}});
+            startup = false;
+        }
+        sPrime = nn.normalizeTanhEstimator(new float[][]{{(float) getBoundsInParent().getMinY(),
+            (float) getBoundsInParent().getMaxY(),
+            (float) getVelocity(),
+            (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMinX(),
+            (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(),
+            (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY(),
+            (float) getObstacles().get(obstacleAhead + 1).getBoundsInParent().getMinY()}});
+        train();
+        if (Math.random() < epsilon) {//Epsilon Greedy Strategy
+            aPrime = Math.random() < .5 ? 0 : 1;
+//                epsilon -= .00001;
+//                System.out.println(epsilon);
+        } else {//Take action with the max Q value
+            aPrime = nn.indexMax(nn.feedforward(sPrime));
+        }
+        jump = aPrime == 0;
+//            System.out.println(jump);
+//            System.out.println(action);
+        jump();
+        gravity();
+        s = nn.copy(sPrime);
+        a = aPrime;
     }
 
     public double getVelocity() {
@@ -91,8 +109,8 @@ public class Bird extends Circle {
     }
 
     public void death() {
-        timer.stop();
         this.setVisible(false);
+        train();
     }
 
     public NNest.NN getBrain() {
@@ -100,6 +118,26 @@ public class Bird extends Circle {
     }
 
     public void setBrain(NNest.NN brain) {
-        nn = brain.copy();
+        nn = brain.clone();
+    }
+
+    public float reward() {
+        if (isVisible() && throughObstacle) {
+            throughObstacle = false;
+//            System.out.println("woooo");
+            return 10;
+        } else if (isVisible() && !throughObstacle) {
+            return .1f;
+        } else {
+            return -10;
+        }
+    }
+
+    public void train() {
+        float target = reward() + DISCOUNT * nn.feedforward(sPrime)[0][nn.indexMax(nn.feedforward(sPrime))];
+        float[][] targets = nn.feedforward(s);
+        targets[0][a] = target;
+//        System.out.println(target);
+        nn.backpropagation(s, targets);
     }
 }

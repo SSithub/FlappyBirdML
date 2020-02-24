@@ -9,7 +9,7 @@ import javafx.stage.Stage;
 import java.io.*;
 public class NNest extends Application implements Serializable{
     volatile static double globalCost;
-    private volatile static int increment = 0;
+    volatile static int increment = 0;
     private static boolean graphMeasuresAccuracy;
     public class NN implements Serializable{
         public class Layer implements Serializable{
@@ -124,7 +124,7 @@ public class NNest extends Application implements Serializable{
         public int getNetworkSize(){
             return network.size();
         }
-        public NN copy(){
+        public NN clone(){
             NN nnCopy = new NN(lr,hiddenActivationFunctionName,outputActivationFunctionName,costFunctionName,optimizerName,graphMeasuresAccuracy,layerNodes);
             for(int i = 0; i < getNetworkSize(); i++){
                 nnCopy.getNetworkLayer(i).weights = copy(getNetworkLayer(i).weights);
@@ -206,7 +206,7 @@ public class NNest extends Application implements Serializable{
             }
         }
         public float[][] feedforward(float[][] inputs){
-            float[][] outputs = normalize(inputs);
+            float[][] outputs = inputs;
             for(int i = 0; i < NETWORKSIZE-1; i++)//Feed the inputs through the hidden layers
                 outputs = activationHiddens.apply(add(dot(outputs,network.get(i).weights),network.get(i).biases),false);
             //Feed the output from the hidden layers to the output layers with its activation function
@@ -216,7 +216,7 @@ public class NNest extends Application implements Serializable{
         public void backpropagation(float[][] inputs, float[][] targets){//Using notation from neuralnetworksanddeeplearning.com
             if(targets[0].length != network.get(NETWORKSIZE-1).biases[0].length)
                 throw new IllegalArgumentException("TARGETS ARRAY DO NOT MATCH THE SIZE OF THE OUTPUT LAYER");
-            float[][] outputs = normalize(inputs);
+            float[][] outputs = inputs;
             //Each partial derivative is used in this order
             float[][] dC_dA;
             float[][] dA_dZ;
@@ -420,13 +420,13 @@ public class NNest extends Application implements Serializable{
             cost = -Math.log(outputs[0][correctClass]);
             return null;
         }
-        public float[][] normalize(float[][] inputs){
+        public float[][] normalizeTanhEstimator(float[][] inputs){
             int inputLength = inputs[0].length;
             float[][] result = new float[1][inputLength];
             float mean = sum(inputs)/inputLength;
-            float deviation = (float)Math.sqrt(sum(power(subtract(inputs, create(1,inputLength,mean)),2))/mean);
+            float deviation = (float)(Math.sqrt(sum(power(subtract(inputs, create(1,inputLength,mean)),2))/(mean)));
             for(int i = 0; i < inputs[0].length; i++){
-                result[0][i] = (float)(.5*(tanh((float)(.01*((inputs[0][i]-mean)/deviation)),false)+1));//tanh estimator normalization
+                result[0][i] = (float)(.5*(tanh((float)(.01*((inputs[0][i]-mean)/(deviation))),false)+1));//tanh estimator normalization
             }
             return result;
         }
@@ -760,6 +760,28 @@ public class NNest extends Application implements Serializable{
                     matrixResult[i][j] = matrix[i][j];
             return matrixResult;
         }
+        public int indexMax(float[][] oneRowMatrix){
+            float max = Float.NEGATIVE_INFINITY;
+            int index = 0;
+            for(int i = 0; i < oneRowMatrix[0].length; i++)
+                if(max < oneRowMatrix[0][i]){
+                    max = oneRowMatrix[0][i];
+                    index = i;
+                }
+            return index;
+        }
+        public float[][] append(float[][] oneRow1, float[][] oneRow2){
+            int length1 = oneRow1[0].length;
+            int length2 = oneRow2[0].length;
+            float[][] result = new float[1][length1 + length2];
+            for(int i = 0; i < length1; i++){
+                result[0][i] = oneRow1[0][i];
+            }
+            for(int i = 0; i < length2; i++){
+                result[0][i+length1] = oneRow2[0][i];
+            }
+            return result;
+        }
     }
     @Override
     public void start(Stage stage){
@@ -792,7 +814,42 @@ public class NNest extends Application implements Serializable{
         updateThread.setDaemon(true);
         updateThread.start();
     }
-    public static void startGraph(){
+    public static void graphJFX(){
+        try{
+            Stage stage1 = new Stage();
+            boolean costVSAccuracy = graphMeasuresAccuracy; //Cost = false, Accuracy = true
+            final NumberAxis xAxis = new NumberAxis();
+            final NumberAxis yAxis = new NumberAxis();
+            xAxis.setAnimated(false);
+            xAxis.setLabel("Training Sessions");
+            yAxis.setAnimated(false);
+            yAxis.setLabel(costVSAccuracy ? "Accuracy" : "Cost"); 
+            XYChart.Series<Number, Number> series = new XYChart.Series<>();
+            series.setName(yAxis.getLabel() + " over " + xAxis.getLabel());
+            ScatterChart<Number, Number> chart = new ScatterChart<>(xAxis, yAxis);
+            chart.setAnimated(false);
+            chart.getData().add(series);
+            Scene scene = new Scene(chart, 600, 300);
+            stage1.setScene(scene);
+            stage1.show();
+            Thread updateThread = new Thread(() -> {
+                while(true){
+                    try{
+                        Thread.sleep(50);
+                        Platform.runLater(() -> series.getData().add(new XYChart.Data<>(increment, !costVSAccuracy ? globalCost : 1/Math.pow(10, globalCost))));
+                    } 
+                    catch(InterruptedException e){
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+            updateThread.setDaemon(true);
+            updateThread.start();
+        }
+        catch(ExceptionInInitializerError e){
+        }
+    }
+    public static void graph(){
         new Thread(() -> {
             NNest.launch(NNest.class);
         }).start();
