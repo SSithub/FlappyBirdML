@@ -37,33 +37,19 @@ public class Game extends Application {
     private final double OBSTACLE_SPEED = 5;
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
-    private NNest.NN nn = new NNest().new NN(Math.pow(10, -5), "relu", "linear", "quadratic", "momentum", false, 7, 8, 2);
+    private NNest.NN nn = new NNest().new NN(Math.pow(10, -4), 777, "relu", "linear", "quadratic", 7, 10, 10, 2);
+    private NNest.NN qn;
     public static int elapsed = 0;
     public static int obstacleAhead = 0;
     private int highscore = 0;
     private final Text HIGH = new Text("Highscore: " + highscore);
-    public static double epsilon = .01;
+    public static double epsilon = .1;
     private final HBox GAMESPEED = new HBox();
     private final HBox EPSILON = new HBox();
-//    AnimationTimer timer = new AnimationTimer() {
-//        @Override
-//        public void handle(long l) {
-//            update();
-//            ((Bird)getBirds().get(0)).update();
-//        }
-//    };
-//    Thread timer = new Thread(() -> {
-//        try {
-//            Thread.sleep(100);
-//        } catch (Exception e) {
-//
-//        }
-//        Platform.runLater(() -> update());
-//    });
-    EventHandler<ActionEvent> gameUpdate = event -> {
+    private final Slider epsilonSlider = new Slider();
+    Timeline loop = new Timeline(new KeyFrame(Duration.millis(16), event -> {
         update();
-    };
-    Timeline timer = new Timeline(new KeyFrame(Duration.millis(16), gameUpdate));
+    }));
 
     private void update() {
         elapsed++;
@@ -94,6 +80,7 @@ public class Game extends Application {
                 break;
             }
         }
+//        ((Rectangle)getObstacles().get(obstacleAhead)).setFill(Color.hsb(Math.random()*361, 1, 1));
         //Check for collisions with obstacles
         for (int i = 0; i < getBirds().size(); i++) {
             if (getObstacles().get(obstacleAhead).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent()) || getObstacles().get(obstacleAhead + 1).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent())) {
@@ -117,12 +104,19 @@ public class Game extends Application {
     }
 
     private void setup() {
+        SCORE.setText("1");
+        SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int) (Math.log10(Integer.parseInt(SCORE.getText()))));
+        SCORE.setText("0");
         for (int i = 0; i < 4; i++) {
             newObstacle(BOUNDSX + i * OBSTACLE_SPACING);
         }
         getBirds().add(new Bird(Color.GOLD));
         ((Bird) getBirds().get(0)).setBrain(nn.clone());
-//        timer.start();
+        if (NNest.sessions % 100 == 0) {
+            qn = nn.clone();
+        }
+        ((Bird) getBirds().get(0)).setQN(qn.clone());
+//        loop.start();
     }
 
     private void reset() {
@@ -133,10 +127,11 @@ public class Game extends Application {
             highscore = Integer.parseInt(SCORE.getText());
             HIGH.setText("Highscore: " + highscore);
         }
-        SCORE.setTranslateX(BOUNDSX - 100 - 45 * (int) (Math.log10(Integer.parseInt(SCORE.getText()))));
-        SCORE.setText("0");
         setup();
         elapsed = 0;
+        if (epsilonSlider.getValue() > .0001) {
+            epsilonSlider.setValue(epsilon - .000001);
+        }
     }
 
     public static ObservableList<Node> getObstacles() {
@@ -149,13 +144,14 @@ public class Game extends Application {
 
     private void speedSetup() {
         Slider slider = new Slider();
+        slider.setPrefWidth(200);
         slider.setMax(500);
         slider.setMin(1);
         slider.setValue(1);
         Label label = new Label("Game Speed: " + slider.getValue());
         slider.valueProperty().addListener((observable, oldValue, newValue) -> {
-            timer.setRate(newValue.doubleValue());
-            label.setText("Game Speed: " + timer.getRate());
+            loop.setRate(newValue.doubleValue());
+            label.setText("Game Speed: " + loop.getRate());
         });
         GAMESPEED.getChildren().addAll(slider, label);
         GAMESPEED.setTranslateX(20);
@@ -163,28 +159,31 @@ public class Game extends Application {
     }
 
     private void epsilonSetup() {
-        Slider slider = new Slider();
-        slider.setMax(1);
-        slider.setMin(0);
-        slider.setValue(.01);
-        slider.setBlockIncrement(.00001);
-        Label label = new Label("Epsilon: " + slider.getValue());
-        slider.valueProperty().addListener((observable, oldValue, newValue) -> {
+        epsilonSlider.setPrefWidth(200);
+        epsilonSlider.setMax(1);
+        epsilonSlider.setMin(0);
+        epsilonSlider.setValue(epsilon);
+        epsilonSlider.setBlockIncrement(.0001);
+        Label label = new Label("Epsilon: " + epsilonSlider.getValue());
+        epsilonSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
             epsilon = newValue.doubleValue();
             label.setText("Epsilon: " + epsilon);
         });
-        EPSILON.getChildren().addAll(slider, label);
+        EPSILON.getChildren().addAll(epsilonSlider, label);
         EPSILON.setTranslateX(20);
         EPSILON.setTranslateY(40);
     }
 
     @Override
     public void start(Stage stage) throws Exception {
-        NNest.graphJFX();
+        nn.setOptimizer("momentum");
+        NNest.graphJFX(true);
         stage.setOnCloseRequest(event -> {
             nn.save();
         });
-        nn.load();
+        if (nn.load() == false) {
+//            nn.randomizeNetwork(.01);
+        }
         BACKGROUND.setFill(Color.DEEPSKYBLUE);
         SCORE.setTranslateX(BOUNDSX - 100);
         SCORE.setTranslateY(100);
@@ -199,11 +198,11 @@ public class Game extends Application {
         stage.setScene(scene);
         stage.setFullScreen(true);
         stage.show();
-        timer.setCycleCount(Animation.INDEFINITE);
+        loop.setCycleCount(Animation.INDEFINITE);
         speedSetup();
         epsilonSetup();
         setup();
-        timer.play();
+        loop.play();
     }
 
     public static void main(String[] args) {

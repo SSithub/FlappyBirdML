@@ -1,11 +1,17 @@
 package flappybirdai;
 
+import javafx.animation.Animation;
 import javafx.animation.AnimationTimer;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Slider;
 import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -13,6 +19,7 @@ import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 public class Game extends Application {
 
@@ -29,26 +36,34 @@ public class Game extends Application {
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
     private int generations = 0;
-    private NNest.NN nn = new NNest().new NN(0, "relu", "sigmoid", "quadratic", "none", false, 7, 7, 1);
+    private NNest.NN nn = new NNest().new NN(0, "relu", "sigmoid", "quadratic", "none", false, 7, 4, 1);
     private boolean newBrain = false;
     public static int elapsed = 0;
     public static int obstacleAhead = 0;
     private int highscore = 0;
     private final Text HIGH = new Text("Highscore: " + highscore);
+    private final Slider slider = new Slider();
 
-    private final int POPULATION = 20000;
+    private final int POPULATION = 1000;
+    private final int BIRDSSIZE = POPULATION+1;
     private final double MUTATION_RATE = .05;
     private final double MUTATION_RANGE = 2;
     private final double RANDOMIZE_RANGE = 2;
 
-    AnimationTimer timer = new AnimationTimer() {
-        @Override
-        public void handle(long l) {
-            update();
-        }
-    };
+//    AnimationTimer loop = new AnimationTimer() {
+//        @Override
+//        public void handle(long l) {
+//            update();
+//        }
+//    };
+    Timeline loop = new Timeline(new KeyFrame(Duration.millis(16), event -> {
+        update();
+    }));
 
     private void update() {
+        for (int i = 0; i < BIRDSSIZE; i++) {
+            ((Bird) getBirds().get(i)).update();
+        }
         elapsed++;
         //Move obstacles instead birds to maybe help performance
         for (int i = 0; i < getObstacles().size(); i++) {
@@ -76,19 +91,19 @@ public class Game extends Application {
             }
         }
         //Check for collisions with obstacles
-        for (int i = 0; i < getBirds().size(); i++) {
+        for (int i = 0; i < BIRDSSIZE; i++) {
             if (getObstacles().get(obstacleAhead).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent()) || getObstacles().get(obstacleAhead + 1).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent())) {
                 ((Bird) getBirds().get(i)).death();
             }
         }
         //Check for all birds dead
         int dead = 0;
-        for (int i = 0; i < getBirds().size(); i++) {
+        for (int i = 0; i < BIRDSSIZE; i++) {
             if (getBirds().get(i).isVisible() == false) {
                 dead++;
             }
         }
-        if (dead == getBirds().size()) {
+        if (dead == BIRDSSIZE) {
             reset();
         }
     }
@@ -104,6 +119,8 @@ public class Game extends Application {
                 ((Bird) getBirds().get(i)).setBrain(nn.copy());
                 ((Bird) getBirds().get(i)).getBrain().randomizeNetwork(RANDOMIZE_RANGE);
             }
+            getBirds().add(new Bird(Color.WHITE));
+            ((Bird) getBirds().get(BIRDSSIZE - 1)).setBrain(nn.copy());
             newBrain = false;
         } else {
             for (int i = 0; i < POPULATION; i++) {
@@ -112,19 +129,18 @@ public class Game extends Application {
                 ((Bird) getBirds().get(i)).getBrain().mutateNewValues(MUTATION_RATE, MUTATION_RANGE);
             }
             getBirds().add(new Bird(Color.WHITE));
-            ((Bird) getBirds().get(getBirds().size() - 1)).setBrain(nn.copy());
+            ((Bird) getBirds().get(BIRDSSIZE - 1)).setBrain(nn.copy());
         }
         for (int i = 0; i < 4; i++) {
             newObstacle(BOUNDSX + i * OBSTACLE_SPACING);
         }
-        timer.start();
     }
 
     private void reset() {
         generations++;
         int bestBirdIndex = 0;
         int max = Integer.MIN_VALUE;
-        for (int i = 0; i < getBirds().size(); i++) {
+        for (int i = 0; i < BIRDSSIZE; i++) {
             if (((Bird) getBirds().get(i)).getFitness() > max) {
                 max = ((Bird) getBirds().get(i)).getFitness();
                 bestBirdIndex = i;
@@ -185,13 +201,14 @@ public class Game extends Application {
                 if (!newBrain) {
                     int bestBirdIndex = 0;
                     int max = Integer.MIN_VALUE;
-                    for (int i = 0; i < getBirds().size(); i++) {
+                    for (int i = 0; i < BIRDSSIZE; i++) {
                         if (((Bird) getBirds().get(i)).getFitness() > max) {
                             max = ((Bird) getBirds().get(i)).getFitness();
                             bestBirdIndex = i;
                         }
                     }
                     nn = ((Bird) getBirds().get(bestBirdIndex)).getBrain().copy();
+                    nn.save();
                 }
                 System.exit(0);
             }
@@ -200,6 +217,18 @@ public class Game extends Application {
         stage.setFullScreen(true);
         stage.show();
         setup();
+        loop.setCycleCount(Animation.INDEFINITE);
+        loop.play();
+        
+        slider.setMax(500);
+        slider.setMin(1);
+        slider.setBlockIncrement(10);
+        slider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            loop.setRate(newValue.doubleValue());
+        });
+        slider.setTranslateX(20);
+        slider.setTranslateY(100);
+        ROOT.getChildren().add(slider);
     }
 
     public static void main(String[] args) {

@@ -2,6 +2,7 @@ package flappybirdai;
 
 import static flappybirdai.Game.BOUNDSX;
 import static flappybirdai.Game.BOUNDSY;
+import static flappybirdai.Game.elapsed;
 import static flappybirdai.Game.epsilon;
 import static flappybirdai.Game.getObstacles;
 import static flappybirdai.Game.obstacleAhead;
@@ -11,6 +12,7 @@ import javafx.scene.shape.Circle;
 public class Bird extends Circle {
 
     private NNest.NN nn;
+    private NNest.NN qn;
     public static final double RADIUS = 25;
     private double velocity = 0;
     private boolean falling;
@@ -21,9 +23,11 @@ public class Bird extends Circle {
     private float[][] sPrime;
     private int a = 0;
     private int aPrime;
-    private final float DISCOUNT = .8f;
+    private final float DISCOUNT = .2f;
     private boolean startup = true;
     public boolean throughObstacle = false;
+    private float[][] predictNN;
+    private float[][] predictQN;
 
     Bird(Color color) {
         this.setRadius(RADIUS);
@@ -50,19 +54,30 @@ public class Bird extends Circle {
             (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(),
             (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY(),
             (float) getObstacles().get(obstacleAhead + 1).getBoundsInParent().getMinY()}});
-        train();
+        predictNN = nn.feedforward(sPrime);
+
+//        float sum = nn.sum(nn.softmax(predictNN));
+//        double prob = Math.exp(predictNN[0][nn.argmax(predictNN)]) / sum;
+//        if(Math.random() < prob){
+//            aPrime = nn.argmax(predictNN);
+//        }
+//        System.out.println(prob);
         if (Math.random() < epsilon) {//Epsilon Greedy Strategy
-            aPrime = Math.random() < .5 ? 0 : 1;
-//                epsilon -= .00001;
-//                System.out.println(epsilon);
+            if (Math.random() < .5) {
+                aPrime = 0;
+            } else {
+                aPrime = 1;
+            }
         } else {//Take action with the max Q value
-            aPrime = nn.indexMax(nn.feedforward(sPrime));
+            aPrime = nn.argmax(predictNN);
         }
         jump = aPrime == 0;
 //            System.out.println(jump);
 //            System.out.println(action);
         jump();
         gravity();
+        train();
+
         s = nn.copy(sPrime);
         a = aPrime;
     }
@@ -125,19 +140,26 @@ public class Bird extends Circle {
         if (isVisible() && throughObstacle) {
             throughObstacle = false;
 //            System.out.println("woooo");
-            return 10;
+            return 1;
         } else if (isVisible() && !throughObstacle) {
             return .1f;
         } else {
-            return -10;
+            return -1;
         }
     }
 
     public void train() {
-        float target = reward() + DISCOUNT * nn.feedforward(sPrime)[0][nn.indexMax(nn.feedforward(sPrime))];
-        float[][] targets = nn.feedforward(s);
+        predictQN = qn.feedforward(sPrime);
+        float target = reward() + DISCOUNT * predictQN[0][qn.argmax(predictQN)];
+        float[][] targets = qn.feedforward(s);
         targets[0][a] = target;
-//        System.out.println(target);
+//        if (elapsed % 50 == 0) {
+//            System.out.println(target);
+//        }
         nn.backpropagation(s, targets);
+    }
+
+    public void setQN(NNest.NN brain) {
+        qn = brain.clone();
     }
 }

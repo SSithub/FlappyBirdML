@@ -22,13 +22,32 @@ public class Bird extends Circle {
     private int delay = DELAY;
     private int fitness = 0;
     private double distanceFromGapLevel;
-    private final AnimationTimer timer = new AnimationTimer() {
-        @Override
-        public void handle(long l) {
+    private boolean alive;
+//    private final AnimationTimer loop = new AnimationTimer() {
+//        @Override
+//        public void handle(long l) {
+//            distanceFromGapLevel = Math.abs((getBoundsInParent().getMinY() + RADIUS) - (getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY() + OBSTACLE_GAP));
+//            fitness = (int) (2 * elapsed + (BOUNDSY / (1 + distanceFromGapLevel)));
+//            //Y of the top of the bird, Y of the bottom of the bird, X of the left side of the first obstacle, X of the right side of the first obstacle, X of the left side of the second obstacle, X of the right side of the second obstacle, Y of the top of the first obstacle's gap, Y of the bottom of the first obstacle's gap, Y of the top of the second obstacle's gap, Y of the bottom of the second obstacle's gap, fitness, velocity
+////         
+//            inputs = new float[][]{{(float) getBoundsInParent().getMinY(),
+//                (float) getBoundsInParent().getMaxY(),
+//                (float) getVelocity(),
+//                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMinX(),
+//                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(),
+//                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY(),
+//                (float) getObstacles().get(obstacleAhead + 1).getBoundsInParent().getMinY()}};
+//            jump = nn.feedforward(inputs)[0][0] >= .5;
+//            jump();
+//            gravity();
+//        }
+//    };
+
+    public void update() {
+        if (alive) {
             distanceFromGapLevel = Math.abs((getBoundsInParent().getMinY() + RADIUS) - (getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY() + OBSTACLE_GAP));
             fitness = (int) (2 * elapsed + (BOUNDSY / (1 + distanceFromGapLevel)));
-            //Y of the top of the bird, Y of the bottom of the bird, X of the left side of the first obstacle, X of the right side of the first obstacle, X of the left side of the second obstacle, X of the right side of the second obstacle, Y of the top of the first obstacle's gap, Y of the bottom of the first obstacle's gap, Y of the top of the second obstacle's gap, Y of the bottom of the second obstacle's gap, fitness, velocity
-//         
+
             inputs = new float[][]{{(float) getBoundsInParent().getMinY(),
                 (float) getBoundsInParent().getMaxY(),
                 (float) getVelocity(),
@@ -40,14 +59,15 @@ public class Bird extends Circle {
             jump();
             gravity();
         }
-    };
+    }
 
     Bird(Color color) {
         this.setRadius(RADIUS);
         this.setTranslateX(BOUNDSX / 3);
         this.setTranslateY(BOUNDSY / 2);
         this.setFill(color);
-        timer.start();
+        alive = true;
+//        loop.start();
     }
 
     public double getVelocity() {
@@ -74,7 +94,11 @@ public class Bird extends Circle {
         falling = getVelocity() < 0;// < 0 = true; > 0 = false
         addVelocity(-.49);
         for (int j = 0; j < Math.abs(velocity); j++) {
-            setTranslateY(getTranslateY() + (falling ? 1 : -1));
+            if (falling) {
+                setTranslateY(getTranslateY() + 1);
+            } else {
+                setTranslateY(getTranslateY() - 1);
+            }
             if (getBoundsInParent().intersects(0, BOUNDSY, BOUNDSX, 1)) {//Hitting the bottom
                 death();
             } else if (getBoundsInParent().intersects(0, 0, BOUNDSX, 1)) {//Hitting the top
@@ -92,8 +116,9 @@ public class Bird extends Circle {
     }
 
     public void death() {
-        timer.stop();
+//        loop.stop();
         this.setVisible(false);
+        alive = false;
     }
 
     public int getFitness() {
