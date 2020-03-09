@@ -36,7 +36,7 @@ public class Game extends Application {
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
     private int generations = 0;
-    private NNest.NN nn = new NNest().new NN(0, "relu", "sigmoid", "quadratic", "none", false, 7, 4, 1);
+    private NNest.NN nn = new NNest().new NN(0, "relu", "sigmoid", "quadratic", "none", false, 7, 2, 1);
     private boolean newBrain = false;
     public static int elapsed = 0;
     public static int obstacleAhead = 0;
@@ -120,16 +120,16 @@ public class Game extends Application {
                 ((Bird) getBirds().get(i)).getBrain().randomizeNetwork(RANDOMIZE_RANGE);
             }
             getBirds().add(new Bird(Color.WHITE));
-            ((Bird) getBirds().get(BIRDSSIZE - 1)).setBrain(nn.copy());
+            ((Bird) getBirds().get(BIRDSSIZE - 1)).setBrain(nn);
             newBrain = false;
         } else {
             for (int i = 0; i < POPULATION; i++) {
                 getBirds().add(new Bird(Color.hsb(Math.random() * 361, .9, .9)));
-                ((Bird) getBirds().get(i)).setBrain(nn.copy());
+                ((Bird) getBirds().get(i)).setBrain(nn);
                 ((Bird) getBirds().get(i)).getBrain().mutateNewValues(MUTATION_RATE, MUTATION_RANGE);
             }
             getBirds().add(new Bird(Color.WHITE));
-            ((Bird) getBirds().get(BIRDSSIZE - 1)).setBrain(nn.copy());
+            ((Bird) getBirds().get(BIRDSSIZE - 1)).setBrain(nn);
         }
         for (int i = 0; i < 4; i++) {
             newObstacle(BOUNDSX + i * OBSTACLE_SPACING);

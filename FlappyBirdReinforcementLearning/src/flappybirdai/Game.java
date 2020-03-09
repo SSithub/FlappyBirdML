@@ -1,15 +1,10 @@
 package flappybirdai;
 
 import javafx.animation.Animation;
-import javafx.animation.AnimationTimer;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.concurrent.Service;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -37,24 +32,29 @@ public class Game extends Application {
     private final double OBSTACLE_SPEED = 5;
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
-    private NNest.NN nn = new NNest().new NN(Math.pow(10, -4), 777, "relu", "linear", "quadratic", 7, 10, 10, 2);
-    private NNest.NN qn;
+    private NNest.NN nn = new NNest().new NN(Math.pow(10, -4), 1, "leakyrelu", "linear", "quadratic", "adam", 5, 128, 64, 2);
     public static int elapsed = 0;
+    public int deaths = 0;
     public static int obstacleAhead = 0;
     private int highscore = 0;
     private final Text HIGH = new Text("Highscore: " + highscore);
-    public static double epsilon = .1;
+    public static double epsilon = 1;
     private final HBox GAMESPEED = new HBox();
     private final HBox EPSILON = new HBox();
     private final Slider epsilonSlider = new Slider();
     Timeline loop = new Timeline(new KeyFrame(Duration.millis(16), event -> {
         update();
     }));
+    private boolean firstTime = true;
+    public static final int DEATHSBEFORETRAIN = 1000;
+    private final double DECAY = .00001;//.00001
+    private final double EPSILONLIMIT = .0001;
 
     private void update() {
         elapsed++;
         ((Bird) getBirds().get(0)).update();
-        //Move obstacles instead birds to maybe help performance
+
+        //Update state
         for (int i = 0; i < getObstacles().size(); i++) {
             for (int j = 0; j < OBSTACLE_SPEED; j++) {
                 getObstacles().get(i).setTranslateX(getObstacles().get(i).getTranslateX() - 1);
@@ -80,11 +80,11 @@ public class Game extends Application {
                 break;
             }
         }
-//        ((Rectangle)getObstacles().get(obstacleAhead)).setFill(Color.hsb(Math.random()*361, 1, 1));
+
         //Check for collisions with obstacles
         for (int i = 0; i < getBirds().size(); i++) {
             if (getObstacles().get(obstacleAhead).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent()) || getObstacles().get(obstacleAhead + 1).getBoundsInParent().intersects(getBirds().get(i).getBoundsInParent())) {
-                ((Bird) getBirds().get(i)).death();
+                ((Bird) getBirds().get(i)).death();//Give bird the next state after its action
             }
         }
         //Check for all birds dead
@@ -95,8 +95,10 @@ public class Game extends Application {
             }
         }
         if (dead == getBirds().size()) {
-            reset();
+            reset();//Next state is terminal if the bird died, get the beginning state
         }
+        //Give bird the next state after its action
+        ((Bird) getBirds().get(0)).update2();
     }
 
     private void newObstacle(double x) {
@@ -110,18 +112,16 @@ public class Game extends Application {
         for (int i = 0; i < 4; i++) {
             newObstacle(BOUNDSX + i * OBSTACLE_SPACING);
         }
-        getBirds().add(new Bird(Color.GOLD));
-        ((Bird) getBirds().get(0)).setBrain(nn.clone());
-        if (NNest.sessions % 100 == 0) {
-            qn = nn.clone();
+        if (firstTime) {
+            getBirds().add(new Bird(Color.GOLD));
+            ((Bird) getBirds().get(0)).setQN(nn);
+            ((Bird) getBirds().get(0)).setTN(nn);
+            firstTime = false;
         }
-        ((Bird) getBirds().get(0)).setQN(qn.clone());
-//        loop.start();
     }
 
     private void reset() {
-        nn = ((Bird) getBirds().get(0)).getBrain().clone();
-        getBirds().clear();
+        ((Bird) getBirds().get(0)).reset();
         getObstacles().clear();
         if (highscore < Integer.parseInt(SCORE.getText())) {
             highscore = Integer.parseInt(SCORE.getText());
@@ -129,8 +129,19 @@ public class Game extends Application {
         }
         setup();
         elapsed = 0;
-        if (epsilonSlider.getValue() > .0001) {
-            epsilonSlider.setValue(epsilon - .000001);
+        if (epsilonSlider.getValue() > EPSILONLIMIT) {
+            epsilonSlider.setValue(epsilon - DECAY);
+        }
+        else{
+            epsilonSlider.setValue(1);
+        }
+        deaths++;
+        if (deaths > DEATHSBEFORETRAIN) {
+            deaths = 0;
+            System.out.println(((Bird) getBirds().get(0)).totalReward / DEATHSBEFORETRAIN);
+            ((Bird) getBirds().get(0)).experienceReplayTraining();
+            nn = ((Bird) getBirds().get(0)).getQN().clone();
+            nn.save();
         }
     }
 
@@ -145,7 +156,7 @@ public class Game extends Application {
     private void speedSetup() {
         Slider slider = new Slider();
         slider.setPrefWidth(200);
-        slider.setMax(500);
+        slider.setMax(2000);
         slider.setMin(1);
         slider.setValue(1);
         Label label = new Label("Game Speed: " + slider.getValue());
@@ -176,14 +187,11 @@ public class Game extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        nn.setOptimizer("momentum");
         NNest.graphJFX(true);
         stage.setOnCloseRequest(event -> {
             nn.save();
         });
-        if (nn.load() == false) {
-//            nn.randomizeNetwork(.01);
-        }
+        nn.load();
         BACKGROUND.setFill(Color.DEEPSKYBLUE);
         SCORE.setTranslateX(BOUNDSX - 100);
         SCORE.setTranslateY(100);
