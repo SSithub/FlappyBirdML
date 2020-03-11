@@ -49,8 +49,6 @@ public class Bird extends Circle {
             fitness = (int) (2 * elapsed + (BOUNDSY / (1 + distanceFromGapLevel)));
 
             inputs = new float[][]{{(float) getBoundsInParent().getMinY(),
-                (float) getBoundsInParent().getMaxY(),
-                (float) getVelocity(),
                 (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMinX(),
                 (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(),
                 (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY(),
@@ -130,6 +128,6 @@ public class Bird extends Circle {
     }
 
     public void setBrain(NNest.NN brain) {
-        nn = brain.copy();
+        nn = brain.clone();
     }
 }

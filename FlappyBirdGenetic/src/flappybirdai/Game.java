@@ -36,7 +36,7 @@ public class Game extends Application {
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
     private int generations = 0;
-    private NNest.NN nn = new NNest().new NN(0, "relu", "sigmoid", "quadratic", "none", false, 7, 2, 1);
+    private NNest.NN nn = new NNest().new NN(0,1, "relu", "sigmoid", "quadratic", "", 5, 2, 1);
     private boolean newBrain = false;
     public static int elapsed = 0;
     public static int obstacleAhead = 0;
@@ -116,7 +116,7 @@ public class Game extends Application {
         if (newBrain) {
             for (int i = 0; i < POPULATION; i++) {
                 getBirds().add(new Bird(Color.hsb(Math.random() * 361, .9, .9)));
-                ((Bird) getBirds().get(i)).setBrain(nn.copy());
+                ((Bird) getBirds().get(i)).setBrain(nn.clone());
                 ((Bird) getBirds().get(i)).getBrain().randomizeNetwork(RANDOMIZE_RANGE);
             }
             getBirds().add(new Bird(Color.WHITE));
@@ -146,7 +146,7 @@ public class Game extends Application {
                 bestBirdIndex = i;
             }
         }
-        nn = ((Bird) getBirds().get(bestBirdIndex)).getBrain().copy();
+        nn = ((Bird) getBirds().get(bestBirdIndex)).getBrain().clone();
         System.out.println("Best Fitness For Generation " + generations + ": " + ((Bird) getBirds().get(bestBirdIndex)).getFitness());
         System.out.println("Ticks Elapsed: " + elapsed);
         getBirds().clear();
@@ -207,7 +207,7 @@ public class Game extends Application {
                             bestBirdIndex = i;
                         }
                     }
-                    nn = ((Bird) getBirds().get(bestBirdIndex)).getBrain().copy();
+                    nn = ((Bird) getBirds().get(bestBirdIndex)).getBrain().clone();
                     nn.save();
                 }
                 System.exit(0);

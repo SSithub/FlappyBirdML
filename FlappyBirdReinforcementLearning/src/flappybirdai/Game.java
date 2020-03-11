@@ -27,18 +27,17 @@ public class Game extends Application {
     public static final double BOUNDSY = Screen.getPrimary().getVisualBounds().getMaxY() + 50;
     private final Rectangle BACKGROUND = new Rectangle(0, 0, BOUNDSX, BOUNDSY);
     public static final double OBSTACLE_WIDTH = 100;
-    public static final double OBSTACLE_GAP = 200;
+    public static final double OBSTACLE_GAP = 300;
     public final double OBSTACLE_SPACING = 650;
     private final double OBSTACLE_SPEED = 5;
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
-    private NNest.NN nn = new NNest().new NN(Math.pow(10, -4), 1, "leakyrelu", "linear", "quadratic", "adam", 5, 128, 64, 2);
+    private NNest.NN nn = new NNest().new NN(Math.pow(10, -4), 1, "leakyrelu", "linear", "quadratic", "adam", 5, 128,128, 2);
     public static int elapsed = 0;
     public int deaths = 0;
     public static int obstacleAhead = 0;
     private int highscore = 0;
     private final Text HIGH = new Text("Highscore: " + highscore);
-    public static double epsilon = 1;
     private final HBox GAMESPEED = new HBox();
     private final HBox EPSILON = new HBox();
     private final Slider epsilonSlider = new Slider();
@@ -46,9 +45,11 @@ public class Game extends Application {
         update();
     }));
     private boolean firstTime = true;
+    public static double epsilon = .001;
     public static final int DEATHSBEFORETRAIN = 1000;
-    private final double DECAY = .00001;//.00001
-    private final double EPSILONLIMIT = .0001;
+    private final double DECAY = .000001;//.00001
+    private final double EPSILONLIMIT = 0;
+    private final double EPSILONRESET = epsilon;
 
     private void update() {
         elapsed++;
@@ -133,7 +134,7 @@ public class Game extends Application {
             epsilonSlider.setValue(epsilon - DECAY);
         }
         else{
-            epsilonSlider.setValue(1);
+            epsilonSlider.setValue(EPSILONRESET);
         }
         deaths++;
         if (deaths > DEATHSBEFORETRAIN) {

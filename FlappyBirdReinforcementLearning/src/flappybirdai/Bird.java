@@ -22,7 +22,7 @@ public class Bird extends Circle {
     private float[][] s;
     private float[][] s_;
     private int a;
-    private final float DISCOUNT = .9f;
+    private final float DISCOUNT = .2f;
     public boolean throughObstacle = false;
     private ArrayList<Experience> experienceReplay = new ArrayList<>();
     float totalReward;
@@ -46,14 +46,21 @@ public class Bird extends Circle {
     public void update() {
         s = getState();//initialize state s
         if (Math.random() < epsilon) {//Epsilon Greedy Strategy
-            if (Math.random() < .05) {
+            if (Math.random() < .2) {
                 a = 0;
             } else {
                 a = 1;
             }
+//            System.out.println("wooo");
         } else {//Take action with the max Q value
             a = qn.argmax(qn.feedforward(s));
         }
+//        float[][] probabilities = qn.softmax(qn.feedforward(s));
+//        if (Math.random() < probabilities[0][0]) {
+//            a = 0;
+//        } else {
+//            a = 1;
+//        }
         jump = a == 0;//perform best or exploration action from state s
         jump();
         gravity();
