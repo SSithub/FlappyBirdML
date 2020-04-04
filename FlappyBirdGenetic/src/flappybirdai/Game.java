@@ -36,7 +36,17 @@ public class Game extends Application {
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
     private int generations = 0;
-    private NNest.NN nn = new NNest().new NN(0,1, "relu", "sigmoid", "quadratic", "", 5, 2, 1);
+    private NNLib.NN nn = new NNLib().new NN(
+            "",
+            0,
+            111,
+            NNLib.Initializer.HE,
+            NNLib.ActivationFunction.RELU,
+            NNLib.ActivationFunction.SIGMOID,
+            NNLib.LossFunction.QUADRATIC,
+            NNLib.Optimizer.VANILLA,
+            3, 2, 1
+    );
     private boolean newBrain = false;
     public static int elapsed = 0;
     public static int obstacleAhead = 0;
@@ -45,17 +55,12 @@ public class Game extends Application {
     private final Slider slider = new Slider();
 
     private final int POPULATION = 1000;
-    private final int BIRDSSIZE = POPULATION+1;
     private final double MUTATION_RATE = .05;
     private final double MUTATION_RANGE = 2;
     private final double RANDOMIZE_RANGE = 2;
 
-//    AnimationTimer loop = new AnimationTimer() {
-//        @Override
-//        public void handle(long l) {
-//            update();
-//        }
-//    };
+    private final int BIRDSSIZE = POPULATION + 1;
+
     Timeline loop = new Timeline(new KeyFrame(Duration.millis(16), event -> {
         update();
     }));
@@ -126,7 +131,7 @@ public class Game extends Application {
             for (int i = 0; i < POPULATION; i++) {
                 getBirds().add(new Bird(Color.hsb(Math.random() * 361, .9, .9)));
                 ((Bird) getBirds().get(i)).setBrain(nn);
-                ((Bird) getBirds().get(i)).getBrain().mutateNewValues(MUTATION_RATE, MUTATION_RANGE);
+                ((Bird) getBirds().get(i)).getBrain().mutateAdditive(MUTATION_RATE, MUTATION_RANGE);
             }
             getBirds().add(new Bird(Color.WHITE));
             ((Bird) getBirds().get(BIRDSSIZE - 1)).setBrain(nn);
@@ -219,7 +224,7 @@ public class Game extends Application {
         setup();
         loop.setCycleCount(Animation.INDEFINITE);
         loop.play();
-        
+
         slider.setMax(500);
         slider.setMin(1);
         slider.setBlockIncrement(10);

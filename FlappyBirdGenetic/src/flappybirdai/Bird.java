@@ -12,7 +12,7 @@ import javafx.scene.shape.Circle;
 
 public class Bird extends Circle {
 
-    private NNest.NN nn;
+    private NNLib.NN nn;
     private float[][] inputs;
     public static final double RADIUS = 25;
     private double velocity = 0;
@@ -45,14 +45,17 @@ public class Bird extends Circle {
 
     public void update() {
         if (alive) {
-            distanceFromGapLevel = Math.abs((getBoundsInParent().getMinY() + RADIUS) - (getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY() + OBSTACLE_GAP));
-            fitness = (int) (2 * elapsed + (BOUNDSY / (1 + distanceFromGapLevel)));
+//            distanceFromGapLevel = Math.abs((getBoundsInParent().getMinY() + RADIUS) - (getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY() + OBSTACLE_GAP));
+//            fitness = (int) (2 * elapsed + (BOUNDSY / (1 + distanceFromGapLevel)));
+            fitness = elapsed;
 
-            inputs = new float[][]{{(float) getBoundsInParent().getMinY(),
+            inputs = new float[][]{{
+                (float) getBoundsInParent().getMinY(),
                 (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMinX(),
-                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(),
+//                (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxX(),
                 (float) getObstacles().get(obstacleAhead).getBoundsInParent().getMaxY(),
-                (float) getObstacles().get(obstacleAhead + 1).getBoundsInParent().getMinY()}};
+//                (float) getObstacles().get(obstacleAhead + 1).getBoundsInParent().getMinY()
+            }};
             jump = nn.feedforward(inputs)[0][0] >= .5;
             jump();
             gravity();
@@ -123,11 +126,11 @@ public class Bird extends Circle {
         return fitness;
     }
 
-    public NNest.NN getBrain() {
+    public NNLib.NN getBrain() {
         return nn;
     }
 
-    public void setBrain(NNest.NN brain) {
+    public void setBrain(NNLib.NN brain) {
         nn = brain.clone();
     }
 }

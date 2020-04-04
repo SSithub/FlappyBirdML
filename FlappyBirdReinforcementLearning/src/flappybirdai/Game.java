@@ -17,6 +17,7 @@ import javafx.scene.text.Text;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import flappybirdai.NNLib.*;
 
 public class Game extends Application {
 
@@ -32,9 +33,14 @@ public class Game extends Application {
     private final double OBSTACLE_SPEED = 5;
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
-    private NNest.NN nn = new NNest().new NN(Math.pow(10, -4), 1, "leakyrelu", "linear", "quadratic", "adam", 5, 128,128, 2);
+    private NNLib.NN nn = new NNLib().new NN("brain", 1, .0001,
+            Initializer.HE,
+            ActivationFunction.LEAKYRELU,
+            ActivationFunction.SIGMOID,
+            LossFunction.HUBER,
+            Optimizer.AMSGRAD,
+            7, 12, 2);
     public static int elapsed = 0;
-    public int deaths = 0;
     public static int obstacleAhead = 0;
     private int highscore = 0;
     private final Text HIGH = new Text("Highscore: " + highscore);
@@ -45,9 +51,8 @@ public class Game extends Application {
         update();
     }));
     private boolean firstTime = true;
-    public static double epsilon = .001;
-    public static final int DEATHSBEFORETRAIN = 1000;
-    private final double DECAY = .000001;//.00001
+    public static double epsilon = .05;
+    private final double DECAY = 0;
     private final double EPSILONLIMIT = 0;
     private final double EPSILONRESET = epsilon;
 
@@ -115,7 +120,7 @@ public class Game extends Application {
         }
         if (firstTime) {
             getBirds().add(new Bird(Color.GOLD));
-            ((Bird) getBirds().get(0)).setQN(nn);
+            ((Bird) getBirds().get(0)).setNN(nn);
             ((Bird) getBirds().get(0)).setTN(nn);
             firstTime = false;
         }
@@ -132,18 +137,13 @@ public class Game extends Application {
         elapsed = 0;
         if (epsilonSlider.getValue() > EPSILONLIMIT) {
             epsilonSlider.setValue(epsilon - DECAY);
-        }
-        else{
+        } else {
             epsilonSlider.setValue(EPSILONRESET);
         }
-        deaths++;
-        if (deaths > DEATHSBEFORETRAIN) {
-            deaths = 0;
-            System.out.println(((Bird) getBirds().get(0)).totalReward / DEATHSBEFORETRAIN);
-            ((Bird) getBirds().get(0)).experienceReplayTraining();
-            nn = ((Bird) getBirds().get(0)).getQN().clone();
-            nn.save();
-        }
+//            System.out.println(((Bird) getBirds().get(0)).totalReward / TNRESET);
+        ((Bird) getBirds().get(0)).train();
+        nn = ((Bird) getBirds().get(0)).getNN().clone();
+        nn.save();
     }
 
     public static ObservableList<Node> getObstacles() {
@@ -188,7 +188,6 @@ public class Game extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
-        NNest.graphJFX(true);
         stage.setOnCloseRequest(event -> {
             nn.save();
         });
