@@ -9,11 +9,12 @@ import static flappybirdai.Game.obstacleAhead;
 import java.util.ArrayList;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import static flappybirdai.NNlib.*;
 
 public class Bird extends Circle {
 
-    private NNLib.NN nn;
-    private NNLib.NN tn;
+    private NNlib.NN nn;
+    private NNlib.NN tn;
     public static final double RADIUS = 25;
     private double velocity = 0;
     private boolean falling;
@@ -61,7 +62,7 @@ public class Bird extends Circle {
                 }
 //            System.out.println("wooo");
             } else {//Take action with the max Q value
-                a = nn.argmax(nn.feedforward(s));
+                a = argmax((float[][]) nn.feedforward(s));
             }
 //        float[][] probabilities = qn.softmax(qn.feedforward(s));
 //        if (Math.random() < probabilities[0][0]) {
@@ -132,12 +133,13 @@ public class Bird extends Circle {
         update2();
     }
 
-    public NNLib.NN getNN() {
+    public NN getNN() {
         return nn;
     }
 
-    public void setNN(NNLib.NN brain) {
+    public void setNN(NN brain) {
         nn = brain.clone();
+        setTN(nn);
     }
 
     private float[][] getState() {
@@ -172,27 +174,45 @@ public class Bird extends Circle {
             try {
                 int index = nn.getRandom().nextInt(replay.size());
                 Experience e = replay.get(index);
-                float[][] Q_sa = nn.feedforward(e.s);
-                float[][] Q_sa_ = tn.feedforward(e.s_);
+                float[][] Q_sa = (float[][]) nn.feedforward(e.s);
+                print(Q_sa, "before");
+                float[][] Q_sa_ = (float[][]) tn.feedforward(e.s_);
                 if (!e.t) {
-                    Q_sa[0][e.a] = e.r + DISCOUNT * Q_sa_[0][tn.argmax(Q_sa_)];
+                    Q_sa[0][e.a] = e.r + DISCOUNT * Q_sa_[0][argmax(Q_sa_)];
                 } else {
                     Q_sa[0][e.a] = e.r;
                 }
 
-//                nn.print(Q_sa, "before");
+                print(Q_sa, "Q");
                 nn.backpropagation(e.s, Q_sa);
-//                nn.print(nn.feedforward(e.s), "after");
+                print((float[][]) nn.feedforward(e.s), "after");
             } catch (Exception e) {
 
             }
         }
-        if(deaths % TNRESET == 0){
+        if (deaths % TNRESET == 0) {
             tn = nn.clone();
         }
     }
 
-    public void setTN(NNLib.NN brain) {
+    public void setTN(NNlib.NN brain) {
         tn = brain.clone();
+    }
+
+    public class Experience {
+
+        float[][] s;
+        int a;
+        float r;
+        float[][] s_;
+        boolean t;
+
+        Experience(float[][] s, int a, float r, float[][] s_, boolean terminal) {
+            this.s = s;
+            this.a = a;
+            this.r = r;
+            this.s_ = s_;
+            this.t = terminal;
+        }
     }
 }

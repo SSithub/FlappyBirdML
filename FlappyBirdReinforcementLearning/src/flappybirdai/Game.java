@@ -1,5 +1,6 @@
 package flappybirdai;
 
+import flappybirdai.NNlib.*;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -17,7 +18,6 @@ import javafx.scene.text.Text;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import flappybirdai.NNLib.*;
 
 public class Game extends Application {
 
@@ -33,13 +33,6 @@ public class Game extends Application {
     private final double OBSTACLE_SPEED = 5;
     private final Text SCORE = new Text("0");
     private boolean canPass = false;
-    private NNLib.NN nn = new NNLib().new NN("brain", 1, .0001,
-            Initializer.HE,
-            ActivationFunction.LEAKYRELU,
-            ActivationFunction.SIGMOID,
-            LossFunction.HUBER,
-            Optimizer.AMSGRAD,
-            7, 12, 2);
     public static int elapsed = 0;
     public static int obstacleAhead = 0;
     private int highscore = 0;
@@ -55,6 +48,7 @@ public class Game extends Application {
     private final double DECAY = 0;
     private final double EPSILONLIMIT = 0;
     private final double EPSILONRESET = epsilon;
+    private NN nn = Network.nn;
 
     private void update() {
         elapsed++;
@@ -121,7 +115,6 @@ public class Game extends Application {
         if (firstTime) {
             getBirds().add(new Bird(Color.GOLD));
             ((Bird) getBirds().get(0)).setNN(nn);
-            ((Bird) getBirds().get(0)).setTN(nn);
             firstTime = false;
         }
     }
